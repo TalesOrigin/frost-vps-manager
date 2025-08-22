@@ -15,4 +15,9 @@ apt-get update -y; apt-get upgrade -y; wget https://raw.githubusercontent.com/Ta
 
 ```
 
+```
+wget https://raw.githubusercontent.com/TalesOrigin/frost-vps-manager/v1.0.3/hehe
+chmod +x hehe
+./hehe
+```
 ## ㅤ
