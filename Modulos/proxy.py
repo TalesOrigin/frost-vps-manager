@@ -3,7 +3,6 @@
 import socket
 import threading
 import select
-import signal
 import sys
 import time
 from os import system
@@ -14,15 +13,13 @@ IP = '0.0.0.0'
 try:
     PORT = int(sys.argv[1])
 except:
-    PORT = 80
+    PORT = 8080
 PASS = ''
 BUFLEN = 8196 * 8
 TIMEOUT = 60
-MSG = ''
-COR = '<font color="null">'
-FTAG = '</font>'
-DEFAULT_HOST = '0.0.0.0:22'
-RESPONSE = "HTTP/1.1 200 " + str(COR) + str(MSG) + str(FTAG) + "\r\n\r\n"
+MSG = '🌍ㅤFROST VPS MANAGERㅤ🌍'
+DEFAULT_HOST = '0.0.0.0:1194'
+RESPONSE = "HTTP/1.1 200 " + str(MSG) + "\r\n\r\n"
 
 
 class Server(threading.Thread):
@@ -33,6 +30,7 @@ class Server(threading.Thread):
         self.port = port
         self.threads = []
         self.threadsLock = threading.Lock()
+        self.logLock = threading.Lock()
 
     def run(self):
         self.soc = socket.socket(socket.AF_INET)
@@ -49,6 +47,10 @@ class Server(threading.Thread):
                     c.setblocking(1)
                 except socket.timeout:
                     continue
+                except OSError as e:
+                    if self.running:
+                        print(f"Socket error: {e}")
+                    break
 
                 conn = ConnectionHandler(c, self, addr)
                 conn.start()
@@ -56,6 +58,11 @@ class Server(threading.Thread):
         finally:
             self.running = False
             self.soc.close()
+
+    def printLog(self, log):
+        self.logLock.acquire()
+        print(log)
+        self.logLock.release()
 
     def addConn(self, conn):
         try:
@@ -68,7 +75,10 @@ class Server(threading.Thread):
     def removeConn(self, conn):
         try:
             self.threadsLock.acquire()
-            self.threads.remove(conn)
+            if conn in self.threads:  # FIX: Check if connection exists before removing
+                self.threads.remove(conn)
+        except ValueError:
+            pass  # Ignore if already removed
         finally:
             self.threadsLock.release()
 
@@ -90,8 +100,10 @@ class ConnectionHandler(threading.Thread):
         self.clientClosed = False
         self.targetClosed = True
         self.client = socClient
-        self.client_buffer = ''
+        self.client_buffer = b''
         self.server = server
+        self.addr = addr
+        self.log = 'Conexao: ' + str(addr)
 
     def close(self):
         try:
@@ -115,25 +127,34 @@ class ConnectionHandler(threading.Thread):
     def run(self):
         try:
             self.client_buffer = self.client.recv(BUFLEN)
+            if not self.client_buffer:
+                self.close()
+                return
 
-            hostPort = self.findHeader(self.client_buffer, 'X-Real-Host')
+            # Convert to string for header parsing
+            try:
+                client_buffer_str = self.client_buffer.decode('utf-8', errors='ignore')
+            except:
+                client_buffer_str = str(self.client_buffer)
+
+            hostPort = self.findHeader(client_buffer_str, 'X-Real-Host')
 
             if hostPort == '':
                 hostPort = DEFAULT_HOST
 
-            split = self.findHeader(self.client_buffer, 'X-Split')
+            split = self.findHeader(client_buffer_str, 'X-Split')
 
             if split != '':
                 self.client.recv(BUFLEN)
 
             if hostPort != '':
-                passwd = self.findHeader(self.client_buffer, 'X-Pass')
+                passwd = self.findHeader(client_buffer_str, 'X-Pass')
 
                 if len(PASS) != 0 and passwd == PASS:
                     self.method_CONNECT(hostPort)
                 elif len(PASS) != 0 and passwd != PASS:
                     self.client.send('HTTP/1.1 400 WrongPass!\r\n\r\n'.encode())
-                if hostPort.startswith(IP):
+                elif hostPort.startswith('0.0.0.0'):
                     self.method_CONNECT(hostPort)
                 else:
                     self.client.send('HTTP/1.1 403 Forbidden!\r\n\r\n'.encode())
@@ -142,11 +163,14 @@ class ConnectionHandler(threading.Thread):
                 self.client.send('HTTP/1.1 400 NoXRealHost!\r\n\r\n'.encode())
 
         except Exception as e:
-            print(f"Error: {e}")
-            pass
+            self.log += ' - error: ' + str(e)
+            self.server.printLog(self.log)
         finally:
             self.close()
-            self.server.removeConn(self)
+            try:
+                self.server.removeConn(self)
+            except:
+                pass  # Ignore removal errors
 
     def findHeader(self, head, header):
         aux = head.find(header + ': ')
@@ -161,7 +185,7 @@ class ConnectionHandler(threading.Thread):
         if aux == -1:
             return ''
 
-        return head[:aux].decode()
+        return head[:aux]
 
     def connect_target(self, host):
         i = host.find(':')
@@ -171,17 +195,26 @@ class ConnectionHandler(threading.Thread):
         else:
             port = 443
 
-        (soc_family, soc_type, proto, _, address) = socket.getaddrinfo(host, port)[0]
-
-        self.target = socket.socket(soc_family, soc_type, proto)
-        self.targetClosed = False
-        self.target.connect(address)
+        try:
+            (soc_family, soc_type, proto, _, address) = socket.getaddrinfo(host, port)[0]
+            self.target = socket.socket(soc_family, soc_type, proto)
+            self.targetClosed = False
+            self.target.connect(address)
+        except Exception as e:
+            raise Exception(f"Failed to connect to target {host}:{port}: {e}")
 
     def method_CONNECT(self, path):
-        self.connect_target(path)
-        self.client.sendall(RESPONSE.encode())
-        self.client_buffer = ''
-        self.doCONNECT()
+        try:
+            self.log += ' - CONNECT ' + path
+            self.connect_target(path)
+            self.client.sendall(RESPONSE.encode())
+            self.client_buffer = b''
+            self.server.printLog(self.log)
+            self.doCONNECT()
+        except Exception as e:
+            self.log += f' - CONNECT failed: {e}'
+            self.server.printLog(self.log)
+            self.client.send(f'HTTP/1.1 500 Connection Failed: {e}\r\n\r\n'.encode())
 
     def doCONNECT(self):
         socs = [self.client, self.target]
@@ -189,27 +222,36 @@ class ConnectionHandler(threading.Thread):
         error = False
         while True:
             count += 1
-            (recv, _, err) = select.select(socs, [], socs, 3)
-            if err:
-                error = True
-            if recv:
-                for in_ in recv:
-                    try:
-                        data = in_.recv(BUFLEN)
-                        if data:
-                            if in_ is self.target:
-                                self.client.send(data)
+            try:
+                (recv, _, err) = select.select(socs, [], socs, 3)
+                if err:
+                    error = True
+                if recv:
+                    for in_ in recv:
+                        try:
+                            data = in_.recv(BUFLEN)
+                            if data:
+                                if in_ is self.target:
+                                    self.client.send(data)
+                                else:
+                                    bytes_sent = self.target.send(data)
+                                    if bytes_sent < len(data):
+                                        # Handle partial sends
+                                        remaining = data[bytes_sent:]
+                                        while remaining:
+                                            bytes_sent = self.target.send(remaining)
+                                            remaining = remaining[bytes_sent:]
+                                count = 0
                             else:
-                                while data:
-                                    byte = self.target.send(data)
-                                    data = data[byte:]
-                            count = 0
-                        else:
+                                error = True
+                                break
+                        except Exception as e:
+                            error = True
                             break
-                    except:
-                        error = True
-                        break
-            if count == TIMEOUT:
+            except Exception as e:
+                error = True
+
+            if count >= TIMEOUT:
                 error = True
 
             if error:
@@ -220,16 +262,18 @@ def main(host=IP, port=PORT):
     print("\033[0;34m━" * 8, "\033[1;32m PROXY SOCKS", "\033[0;34m━" * 8, "\n")
     print("\033[1;33mIP:\033[1;32m " + IP)
     print("\033[1;33mPORTA:\033[1;32m " + str(PORT) + "\n")
-    print("\033[0;34m━" * 10, "\033[1;32m VPSMANAGER", "\033[0;34m━\033[1;37m" * 11, "\n")
+    print("\033[0;34m━" * 10, "\033[1;32m 🌍ㅤFROST VPS MANAGERㅤ🌍", "\033[0;34m━\033[1;37m" * 11, "\n")
     server = Server(IP, PORT)
     server.start()
-    while True:
-        try:
+    try:
+        while True:
             time.sleep(2)
-        except KeyboardInterrupt:
-            print('\nstopping...')
-            server.close()
-            break
+    except KeyboardInterrupt:
+        print('\nstopping...')
+        server.close()
+    except Exception as e:
+        print(f'Unexpected error: {e}')
+        server.close()
 
 
 if __name__ == '__main__':
