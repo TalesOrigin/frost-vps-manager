@@ -49,7 +49,7 @@ criarssh30() {
      useradd -e $final -M -s /bin/false -p $pass $usuario >/dev/null 2>&1
     (echo "$senha";echo "$senha") | passwd $usuario > /dev/null 2>&1
     echo "$senha" > /etc/VPSManager/senha/$usuario
-    echo "$usuario $limite" >> /root/usuarios.db
+    echo "$usuario $limite" >> /root/user_database.db
 
     # - ENVIA O SSH
     ShellBot.sendMessage --chat_id ${callback_query_message_chat_id} \
@@ -79,7 +79,7 @@ criarssh15() {
      useradd -e $final -M -s /bin/false -p $pass $usuario >/dev/null 2>&1
     (echo "$senha";echo "$senha") | passwd $usuario > /dev/null 2>&1
     echo "$senha" > /etc/VPSManager/senha/$usuario
-    echo "$usuario $limite" >> /root/usuarios.db
+    echo "$usuario $limite" >> /root/user_database.db
 
     # - ENVIA O SSH
     ShellBot.sendMessage --chat_id ${callback_query_message_chat_id} \

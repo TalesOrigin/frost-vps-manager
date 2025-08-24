@@ -223,10 +223,10 @@ criar_user() {
         echo "${senha}"
     ) | passwd "${usuario}" >/dev/null 2>&1
     [[ "${message_from_id[$id]}" != "$id_admin" ]] && {
-        echo "$usuario:$senha:$info_data:$limite" >/etc/bot/revenda/${message_from_username}/usuarios/$usuario
+        echo "$usuario:$senha:$info_data:$limite" >/etc/bot/revenda/${message_from_username}/user_database/$usuario
         echo "$usuario:$senha:$info_data:$limite" >/etc/bot/info-users/$usuario
     }
-    echo "$usuario $limite" >>/root/usuarios.db
+    echo "$usuario $limite" >>/root/user_database.db
     echo "$senha" >/etc/VPSManager/senha/$usuario
     [[ -e "/etc/openvpn/server.conf" ]] && {
         cd /etc/openvpn/easy-rsa/
@@ -258,11 +258,11 @@ fun_del_user() {
         piduser=$(ps -u "$usuario" | grep sshd | cut -d? -f1)
         kill -9 $piduser >/dev/null 2>&1
         userdel --force "$usuario" 2>/dev/null
-        grep -v ^$usuario[[:space:]] /root/usuarios.db >/tmp/ph
-        cat /tmp/ph >/root/usuarios.db
+        grep -v ^$usuario[[:space:]] /root/user_database.db >/tmp/ph
+        cat /tmp/ph >/root/user_database.db
         rm /etc/VPSManager/senha/$usuario >/dev/null 2>&1
     } || {
-        [[ ! -e /etc/bot/revenda/${message_from_username}/usuarios/$usuario ]] && {
+        [[ ! -e /etc/bot/revenda/${message_from_username}/user_database/$usuario ]] && {
             ShellBot.sendMessage --chat_id ${message_chat_id[$id]} \
                 --text "$(echo -e "❌ THE USER DOES NOT EXIST ❌")" \
                 --parse_mode html
@@ -272,10 +272,10 @@ fun_del_user() {
         piduser=$(ps -u "$usuario" | grep sshd | cut -d? -f1)
         kill -9 $piduser >/dev/null 2>&1
         userdel --force "$usuario" 2>/dev/null
-        grep -v ^$usuario[[:space:]] /root/usuarios.db >/tmp/ph
-        cat /tmp/ph >/root/usuarios.db
+        grep -v ^$usuario[[:space:]] /root/user_database.db >/tmp/ph
+        cat /tmp/ph >/root/user_database.db
         rm /etc/VPSManager/senha/$usuario >/dev/null 2>&1
-        rm /etc/bot/revenda/${message_from_username}/usuarios/$usuario
+        rm /etc/bot/revenda/${message_from_username}/user_database/$usuario
         rm /etc/bot/info-users/$usuario
     }
     [[ -e /etc/VPSManager/userteste/$usuario.sh ]] && rm /etc/VPSManager/userteste/$usuario.sh
@@ -316,9 +316,9 @@ alterar_senha_user() {
     senha=$2
     echo "$usuario:$senha" | chpasswd
     echo "$senha" >/etc/VPSManager/senha/$usuario
-    [[ -e /etc/bot/revenda/${message_from_username}/usuarios/$usuario ]] && {
-        senha2=$(cat /etc/bot/revenda/${message_from_username}/usuarios/$usuario | awk -F : {'print $2'})
-        sed -i "/$usuario/ s/\b$senha2\b/$senha/g" /etc/bot/revenda/${message_from_username}/usuarios/$usuario
+    [[ -e /etc/bot/revenda/${message_from_username}/user_database/$usuario ]] && {
+        senha2=$(cat /etc/bot/revenda/${message_from_username}/user_database/$usuario | awk -F : {'print $2'})
+        sed -i "/$usuario/ s/\b$senha2\b/$senha/g" /etc/bot/revenda/${message_from_username}/user_database/$usuario
         sed -i "/$usuario/ s/\b$senha2\b/$senha/g" /etc/bot/info-users/$usuario
     }
     [[ $(ps -u $usuario | grep sshd | wc -l) != '0' ]] && pkill -u $usuario >/dev/null 2>&1
@@ -344,15 +344,15 @@ alterar_limite() {
 alterar_limite_user() {
     usuario=$1
     limite=$2
-    database="/root/usuarios.db"
+    database="/root/user_database.db"
     [[ "${message_from_id[$id]}" == "$id_admin" ]] && {
-        grep -v ^$usuario[[:space:]] /root/usuarios.db >/tmp/a
-        mv /tmp/a /root/usuarios.db
-        echo $usuario $limite >>/root/usuarios.db
+        grep -v ^$usuario[[:space:]] /root/user_database.db >/tmp/a
+        mv /tmp/a /root/user_database.db
+        echo $usuario $limite >>/root/user_database.db
         return 0
     }
     [[ -d /etc/bot/revenda/${message_from_username} ]] && {
-        [[ ! -e /etc/bot/revenda/${message_from_username}/usuarios/$usuario ]] && {
+        [[ ! -e /etc/bot/revenda/${message_from_username}/user_database/$usuario ]] && {
             ShellBot.sendMessage --chat_id ${message_chat_id[$id]} \
                 --text "$(echo -e "❌ THE USER DOES NOT EXIST ❌")" \
                 --parse_mode html
@@ -379,11 +379,11 @@ alterar_limite_user() {
             _erro='1'
             return 0
         }
-        grep -v ^$usuario[[:space:]] /root/usuarios.db >/tmp/a
-        mv /tmp/a /root/usuarios.db
-        echo $usuario $limite >>/root/usuarios.db
-        limite2=$(cat /etc/bot/revenda/${message_from_username}/usuarios/$usuario | awk -F : {'print $4'})
-        sed -i "/\b$usuario\b/ s/\b$limite2\b/$limite/" /etc/bot/revenda/${message_from_username}/usuarios/$usuario
+        grep -v ^$usuario[[:space:]] /root/user_database.db >/tmp/a
+        mv /tmp/a /root/user_database.db
+        echo $usuario $limite >>/root/user_database.db
+        limite2=$(cat /etc/bot/revenda/${message_from_username}/user_database/$usuario | awk -F : {'print $4'})
+        sed -i "/\b$usuario\b/ s/\b$limite2\b/$limite/" /etc/bot/revenda/${message_from_username}/user_database/$usuario
         sed -i "/\b$usuario\b/ s/\b$limite2\b/$limite/" /etc/bot/info-users/$usuario
     }
 }
@@ -408,7 +408,7 @@ alterar_data() {
 alterar_data_user() {
     usuario=$1
     inputdate=$2
-    database="/root/usuarios.db"
+    database="/root/user_database.db"
     [[ "$(echo -e "$inputdate" | sed -e 's/[^/]//ig')" != '//' ]] && {
         udata=$(date "+%d/%m/%Y" -d "+$inputdate days")
         sysdate="$(echo "$udata" | awk -v FS=/ -v OFS=- '{print $3,$2,$1}')"
@@ -427,11 +427,11 @@ alterar_data_user() {
         }
     }
     chage -E $sysdate $usuario
-    [[ -e /etc/bot/revenda/${message_from_username}/usuarios/$usuario ]] && {
+    [[ -e /etc/bot/revenda/${message_from_username}/user_database/$usuario ]] && {
         data2=$(cat /etc/bot/info-users/$usuario | awk -F : {'print $3'})
         sed -i "s;$data2;$udata;" /etc/bot/info-users/$usuario
         echo $usuario $udata ${message_from_username}
-        sed -i "s;$data2;$udata;" /etc/bot/revenda/${message_from_username}/usuarios/$usuario
+        sed -i "s;$data2;$udata;" /etc/bot/revenda/${message_from_username}/user_database/$usuario
     }
 }
 
@@ -452,7 +452,7 @@ ver_users() {
             for user in $(cat /etc/passwd | awk -F : '$3 >= 1000 {print $1}' | grep -v nobody); do
                 info='◈──────────────────◈\n'
                 [[ -e /etc/VPSManager/senha/$user ]] && senha=$(cat /etc/VPSManager/senha/$user) || senha='Null'
-                [[ $(grep -wc $user $HOME/usuarios.db) != '0' ]] && limite=$(grep -w $user $HOME/usuarios.db | cut -d' ' -f2) || limite='Null'
+                [[ $(grep -wc $user $HOME/user_database.db) != '0' ]] && limite=$(grep -w $user $HOME/user_database.db | cut -d' ' -f2) || limite='Null'
                 datauser=$(chage -l $user | grep -i co | awk -F : '{print $2}')
                 [[ $datauser = ' never' ]] && {
                     data="00/00/00"
@@ -484,7 +484,7 @@ ver_users() {
                 --text "⚠️YOU ARE SUSPENDED! CONTACT THE ADMINISTRATOR"
             return 0
         }
-        [[ $(ls /etc/bot/revenda/${callback_query_from_username}/usuarios | wc -l) == '0' ]] && {
+        [[ $(ls /etc/bot/revenda/${callback_query_from_username}/user_database | wc -l) == '0' ]] && {
             ShellBot.answerCallbackQuery --callback_query_id ${callback_query_id[$id]} \
                 --text "YOU HASN'T CREATED USER YET!"
             return 0
@@ -501,10 +501,10 @@ ver_users() {
             --parse_mode html
         fun_infu() {
             local info
-            for user in $(ls /etc/bot/revenda/${callback_query_from_username}/usuarios); do
+            for user in $(ls /etc/bot/revenda/${callback_query_from_username}/user_database); do
                 info='◈──────────────────◈\n'
                 [[ -e /etc/VPSManager/senha/$user ]] && senha=$(cat /etc/VPSManager/senha/$user) || senha='Null'
-                [[ $(grep -wc $user $HOME/usuarios.db) != '0' ]] && limite=$(grep -w $user $HOME/usuarios.db | cut -d' ' -f2) || limite='Null'
+                [[ $(grep -wc $user $HOME/user_database.db) != '0' ]] && limite=$(grep -w $user $HOME/user_database.db | cut -d' ' -f2) || limite='Null'
                 datauser=$(chage -l $user | grep -i co | awk -F : '{print $2}')
                 [[ $datauser = ' never' ]] && {
                     data="00/00/00"
@@ -569,7 +569,7 @@ fun_drop() {
 
 monitor_ssh() {
     if [[ "${callback_query_from_id[$id]}" == "$id_admin" ]]; then
-        database="/root/usuarios.db"
+        database="/root/user_database.db"
         cad_onli=/tmp/$(echo $RANDOM)
         local info_on
         info_on='◈──────────────────◈\n'
@@ -621,12 +621,12 @@ monitor_ssh() {
                 --text "⚠️ YOU ARE SUSPENDED! CONTACT THE ADMINISTRATOR"
             return 0
         }
-        [[ $(ls /etc/bot/revenda/${callback_query_from_username}/usuarios | wc -l) == '0' ]] && {
+        [[ $(ls /etc/bot/revenda/${callback_query_from_username}/user_database | wc -l) == '0' ]] && {
             ShellBot.answerCallbackQuery --callback_query_id ${callback_query_id[$id]} \
                 --text "YOU HASN'T CREATED USER YET!"
             return 0
         }
-        database="/root/usuarios.db"
+        database="/root/user_database.db"
         cad_onli=/tmp/$(echo $RANDOM)
         local info_on
         info_on='◈──────────────────◈\n'
@@ -639,7 +639,7 @@ monitor_ssh() {
             --parse_mode html
         fun_online() {
             local info2
-            for user in $(ls /etc/bot/revenda/${callback_query_from_username}/usuarios); do
+            for user in $(ls /etc/bot/revenda/${callback_query_from_username}/user_database); do
                 [[ "$(grep -w $user $database)" != "0" ]] && lim="$(grep -w $user $database | cut -d' ' -f2)" || lim=0
                 [[ $(netstat -nltp | grep 'dropbear' | wc -l) != '0' ]] && drop="$(fun_drop | grep "$user" | wc -l)" || drop=0
                 [[ -e /etc/openvpn/openvpn-status.log ]] && ovp="$(cat /etc/openvpn/openvpn-status.log | grep -E ,"$user", | wc -l)" || ovp=0
@@ -696,7 +696,7 @@ fun_verif_user() {
         }
     }
     [[ -d /etc/bot/revenda/${message_from_username} ]] && {
-        [[ ! -e /etc/bot/revenda/${message_from_username}/usuarios/$user ]] && {
+        [[ ! -e /etc/bot/revenda/${message_from_username}/user_database/$user ]] && {
             ShellBot.sendMessage --chat_id ${message_chat_id[$id]} \
                 --text "$(echo -e ❌ THE USER $user DOES NOT EXIST !)" \
                 --parse_mode html
@@ -735,7 +735,7 @@ infovps() {
     cpucores=$(grep -c cpu[0-9] /proc/stat)
     ram1=$(free -h | grep -i mem | awk {'print $2'})
     usoram=$(free -m | awk 'NR==2{printf "%.2f%%\t\t", $3*100/$2 }')
-    total=$(cat -n /root/usuarios.db | tail -n 1 | awk '{print $1}')
+    total=$(cat -n /root/user_database.db | tail -n 1 | awk '{print $1}')
     echo -e "SSH: $(grep 'Port' /etc/ssh/sshd_config | cut -d' ' -f2 | grep -v 'no' | xargs)" >$PTs
     [[ -e "/etc/stunnel/stunnel.conf" ]] && echo -e "SSL Tunel: $(netstat -nplt | grep 'stunnel' | awk {'print $4'} | cut -d: -f2 | xargs)" >>$PTs
     [[ -e "/etc/openvpn/server.conf" ]] && echo -e "Openvpn: $(netstat -nplt | grep 'openvpn' | awk {'print $4'} | cut -d: -f2 | xargs)" >>$PTs
@@ -878,7 +878,7 @@ backup_users() {
     rm /root/backup.vps 1>/dev/null 2>/dev/null
     ShellBot.answerCallbackQuery --callback_query_id ${callback_query_id[$id]} \
         --text "♻️ CREATING USER BACKUP"
-    tar cvf /root/backup.vps /root/usuarios.db /etc/shadow /etc/passwd /etc/group /etc/gshadow /etc/bot /etc/VPSManager/senha 1>/dev/null 2>/dev/null
+    tar cvf /root/backup.vps /root/user_database.db /etc/shadow /etc/passwd /etc/group /etc/gshadow /etc/bot /etc/VPSManager/senha 1>/dev/null 2>/dev/null
     ShellBot.sendDocument --chat_id ${id_admin} \
         --document "@/root/backup.vps" \
         --caption "$(echo -e "♻️ USER BACKUP ♻️")"
@@ -949,17 +949,17 @@ fun_teste() {
         echo "$senha"
     ) | passwd $usuario >/dev/null 2>&1
     echo "$senha" >/etc/VPSManager/senha/$usuario
-    echo "$usuario $limite" >>/root/usuarios.db
+    echo "$usuario $limite" >>/root/user_database.db
     [[ "${message_from_id[$id]}" != "$id_admin" ]] && {
-        echo "$usuario:$senha:$ex_date:$limite" >/etc/bot/revenda/${message_from_username}/usuarios/$usuario
+        echo "$usuario:$senha:$ex_date:$limite" >/etc/bot/revenda/${message_from_username}/user_database/$usuario
     }
-    dir_teste="/etc/bot/revenda/${message_from_username}/usuarios/$usuario"
+    dir_teste="/etc/bot/revenda/${message_from_username}/user_database/$usuario"
     cat <<-EOF >/etc/VPSManager/userteste/$usuario.sh
 	#!/bin/bash
 	# USUARIO TESTE
 	[[ \$(ps -u "$usuario" | grep -c sshd) != '0' ]] && pkill -u $usuario
 	userdel --force $usuario
-	grep -v ^$usuario[[:space:]] /root/usuarios.db > /tmp/ph ; cat /tmp/ph > /root/usuarios.db
+	grep -v ^$usuario[[:space:]] /root/user_database.db > /tmp/ph ; cat /tmp/ph > /root/user_database.db
 	[[ -e $dir_teste ]] && rm $dir_teste
 	rm /etc/VPSManager/senha/$usuario > /dev/null 2>&1
 	rm /etc/VPSManager/userteste/$usuario.sh
@@ -985,7 +985,7 @@ fun_teste() {
 
 fun_exp_user() {
     if [[ "${callback_query_from_id[$id]}" == "$id_admin" ]]; then
-        [[ $(cat /root/usuarios.db | wc -l) == '0' ]] && {
+        [[ $(cat /root/user_database.db | wc -l) == '0' ]] && {
             ShellBot.answerCallbackQuery --callback_query_id ${callback_query_id[$id]} \
                 --text "YOU HASN'T CREATED USER YET!"
             return 0
@@ -1000,13 +1000,13 @@ fun_exp_user() {
             echo $diff | grep -q ^\- && continue
             pkill -u $user
             userdel --force $user
-            grep -v ^$user[[:space:]] /root/usuarios.db >/tmp/ph
-            cat /tmp/ph >/root/usuarios.db
+            grep -v ^$user[[:space:]] /root/user_database.db >/tmp/ph
+            cat /tmp/ph >/root/user_database.db
             [[ -e /etc/bot/info-users/$user ]] && rm /etc/bot/info-users/$user
             [[ -e /etc/VPSManager/userteste/$user.sh ]] && rm /etc/VPSManager/userteste/$user.sh
             [[ "$(ls /etc/bot/revenda)" != '0' ]] && {
                 for ex in $(ls /etc/bot/revenda); do
-                    [[ -e /etc/bot/revenda/$exp/usuarios/$user ]] && rm /etc/bot/revenda/$ex/usuarios/$user
+                    [[ -e /etc/bot/revenda/$exp/user_database/$user ]] && rm /etc/bot/revenda/$ex/user_database/$user
                 done
             }
         done
@@ -1019,13 +1019,13 @@ fun_exp_user() {
                 --text "⚠️ YOU ARE SUSPENDED! CONTACT THE ADMINISTRATOR"
             return 0
         }
-        [[ $(ls /etc/bot/revenda/${callback_query_from_username}/usuarios | wc -l) == '0' ]] && {
+        [[ $(ls /etc/bot/revenda/${callback_query_from_username}/user_database | wc -l) == '0' ]] && {
             ShellBot.answerCallbackQuery --callback_query_id ${callback_query_id[$id]} \
                 --text "YOU HASN'T CREATED USER YET!"
             return 0
         }
         datenow=$(date +%s)
-        dir_user="/etc/bot/revenda/${callback_query_from_username}/usuarios"
+        dir_user="/etc/bot/revenda/${callback_query_from_username}/user_database"
         for user in $(ls $dir_user); do
             expdate=$(chage -l $user | awk -F: '/Account expires/{print $2}')
             echo $expdate | grep -q never && continue
@@ -1035,8 +1035,8 @@ fun_exp_user() {
             echo $diff | grep -q ^\- && continue
             pkill -f $user
             userdel --force $user
-            grep -v ^$user[[:space:]] /root/usuarios.db >/tmp/ph
-            cat /tmp/ph >/root/usuarios.db
+            grep -v ^$user[[:space:]] /root/user_database.db >/tmp/ph
+            cat /tmp/ph >/root/user_database.db
             [[ -e /etc/VPSManager/userteste/$user.sh ]] && rm /etc/VPSManager/userteste/$user.sh
             [[ -e "$dir_user/$user" ]] && rm $dir_user/$user
         done
@@ -1094,7 +1094,7 @@ relatorio_rev() {
             }
             _subrev="$(grep -wc SUBREVENDA /etc/bot/$_dirsts/$_nome_rev/$_nome_rev)"
             fun_on() {
-                for user in $(ls /etc/bot/$_dirsts/$_nome_rev/usuarios); do
+                for user in $(ls /etc/bot/$_dirsts/$_nome_rev/user_database); do
                     [[ $(netstat -nltp | grep 'dropbear' | wc -l) != '0' ]] && drop="$(fun_drop | grep "$user" | wc -l)" || drop=0
                     [[ -e /etc/openvpn/openvpn-status.log ]] && ovp="$(cat /etc/openvpn/openvpn-status.log | grep -E ,"$user", | wc -l)" || ovp=0
                     sqd="$(ps -u $user | grep sshd | wc -l)"
@@ -1102,9 +1102,9 @@ relatorio_rev() {
                     echo -e "$conex"
                 done
             }
-            [[ "$(ls /etc/bot/$_dirsts/$_nome_rev/usuarios | wc -l)" != '0' ]] && {
+            [[ "$(ls /etc/bot/$_dirsts/$_nome_rev/user_database | wc -l)" != '0' ]] && {
                 total_on=$(fun_on | paste -s -d + | bc)
-                total_users=$(ls /etc/bot/$_dirsts/$_nome_rev/usuarios | wc -l)
+                total_users=$(ls /etc/bot/$_dirsts/$_nome_rev/user_database | wc -l)
             } || {
                 total_on='0'
                 total_users='0'
@@ -1173,7 +1173,7 @@ relatorio_rev() {
                 _status='Suspenso'
             }
             fun_subon() {
-                for user in $(ls /etc/bot/$_dirsts/$_usub/usuarios); do
+                for user in $(ls /etc/bot/$_dirsts/$_usub/user_database); do
                     [[ $(netstat -nltp | grep 'dropbear' | wc -l) != '0' ]] && drop="$(fun_drop | grep "$user" | wc -l)" || drop=0
                     [[ -e /etc/openvpn/openvpn-status.log ]] && ovp="$(cat /etc/openvpn/openvpn-status.log | grep -E ,"$user", | wc -l)" || ovp=0
                     sqd="$(ps -u $user | grep sshd | wc -l)"
@@ -1181,9 +1181,9 @@ relatorio_rev() {
                     echo -e "$conex"
                 done
             }
-            [[ "$(ls /etc/bot/$_dirsts/$_usub/usuarios | wc -l)" != '0' ]] && {
+            [[ "$(ls /etc/bot/$_dirsts/$_usub/user_database | wc -l)" != '0' ]] && {
                 total_on=$(fun_on | paste -s -d + | bc)
-                total_users=$(ls /etc/bot/$_dirsts/$_usub/usuarios | wc -l)
+                total_users=$(ls /etc/bot/$_dirsts/$_usub/user_database | wc -l)
             } || {
                 total_on='0'
                 total_users='0'
@@ -1282,9 +1282,9 @@ fun_verif_limite_rev() {
         } || {
             _limsomarev='0'
         }
-        [[ $(ls /etc/bot/revenda/$_userrev/usuarios | wc -l) != '0' ]] && {
+        [[ $(ls /etc/bot/revenda/$_userrev/user_database | wc -l) != '0' ]] && {
             _mlim1='0'
-            _meus_users="/etc/bot/revenda/$_userrev/usuarios"
+            _meus_users="/etc/bot/revenda/$_userrev/user_database"
             for _user_ in $(ls $_meus_users); do
                 _mlim2=$(cat $_meus_users/$_user_ | awk -F : {'print $4'})
                 _mlim1=$(echo "${_mlim1} + ${_mlim2}" | bc)
@@ -1294,8 +1294,8 @@ fun_verif_limite_rev() {
         _result=$(echo "${_limsomarev} + ${_mlim1}" | bc)
     }
     [[ "$(grep -w "$_userrev" $ativos | awk '{print $NF}')" == 'subrevenda' ]] && {
-        [[ "$(ls /etc/bot/revenda/$_userrev/usuarios | wc -l)" != '0' ]] && {
-            _dir_users="/etc/bot/revenda/$_userrev/usuarios"
+        [[ "$(ls /etc/bot/revenda/$_userrev/user_database | wc -l)" != '0' ]] && {
+            _dir_users="/etc/bot/revenda/$_userrev/user_database"
             _lim1='0'
             for i in $(ls $_dir_users); do
                 _lim2=$(cat $_dir_users/$i | awk -F : {'print $4'})
@@ -1343,7 +1343,7 @@ criar_rev() {
         echo -e "SUBRESALE: $u_rev LIMIT_SUBRESALE: $l_rev" >>/etc/bot/revenda/${message_from_username}/${message_from_username}
     }
     mkdir /etc/bot/revenda/"$u_rev"
-    mkdir /etc/bot/revenda/"$u_rev"/usuarios
+    mkdir /etc/bot/revenda/"$u_rev"/user_database
     touch /etc/bot/revenda/"$u_rev"/$u_rev
     echo -e "USER: $u_rev LIMITE: $l_rev DIAS: $d_rev TIPO: $t_rev" >>$ativos
     echo -e "◈──────────────────◈\nLIMIT_RESALE: $l_rev\nDAYS_RESALE: $d_rev\n◈──────────────────◈\n" >/etc/bot/revenda/"$u_rev"/$u_rev
@@ -1382,14 +1382,14 @@ del_rev() {
                 while read _listsub2; do
                     _usub="$(echo $_listsub2 | awk '{print $2}')"
                     [[ -e "/etc/bot/revenda/$_usub/$_usub" ]] && _dirsts2='revenda' || _dirsts2='suspensos'
-                    _dir_users="/etc/bot/$_dirsts2/$_usub/usuarios"
+                    _dir_users="/etc/bot/$_dirsts2/$_usub/user_database"
                     [[ "$(ls $_dir_users | wc -l)" != '0' ]] && {
                         for _user in $(ls $_dir_users); do
                             piduser=$(ps -u "$_user" | grep sshd | cut -d? -f1)
                             kill -9 $piduser >/dev/null 2>&1
                             userdel --force "$_user" 2>/dev/null
-                            grep -v ^$_user[[:space:]] /root/usuarios.db >/tmp/ph
-                            cat /tmp/ph >/root/usuarios.db
+                            grep -v ^$_user[[:space:]] /root/user_database.db >/tmp/ph
+                            cat /tmp/ph >/root/user_database.db
                             rm /etc/bot/info-users/$_user
                         done
                     }
@@ -1400,13 +1400,13 @@ del_rev() {
                     }
                 done <<<"$(grep -w 'SUBREVENDA' /etc/bot/$_dirsts/$_cli_rev/$_cli_rev)"
             }
-            [[ "$(ls /etc/bot/$_dirsts/$_cli_rev/usuarios | wc -l)" != '0' ]] && {
-                for _user in $(ls /etc/bot/$_dirsts/$_cli_rev/usuarios); do
+            [[ "$(ls /etc/bot/$_dirsts/$_cli_rev/user_database | wc -l)" != '0' ]] && {
+                for _user in $(ls /etc/bot/$_dirsts/$_cli_rev/user_database); do
                     piduser=$(ps -u "$_user" | grep sshd | cut -d? -f1)
                     kill -9 $piduser >/dev/null 2>&1
                     userdel --force "$_user" 2>/dev/null
-                    grep -v ^$_user[[:space:]] /root/usuarios.db >/tmp/ph
-                    cat /tmp/ph >/root/usuarios.db
+                    grep -v ^$_user[[:space:]] /root/user_database.db >/tmp/ph
+                    cat /tmp/ph >/root/user_database.db
                     rm /etc/bot/info-users/$_user
                 done
             }
@@ -1427,13 +1427,13 @@ del_rev() {
     } || {
         [[ "$(grep -wc "$_cli_rev" /etc/bot/revenda/${message_from_username}/${message_from_username})" != '0' ]] && {
             [[ -d /etc/bot/revenda/$_cli_rev ]] && {
-                [[ "$(ls /etc/bot/revenda/$_cli_rev/usuarios | wc -l)" != '0' ]] && {
-                    for _user in $(ls /etc/bot/revenda/$_cli_rev/usuarios); do
+                [[ "$(ls /etc/bot/revenda/$_cli_rev/user_database | wc -l)" != '0' ]] && {
+                    for _user in $(ls /etc/bot/revenda/$_cli_rev/user_database); do
                         piduser=$(ps -u "$_user" | grep sshd | cut -d? -f1)
                         kill -9 $piduser >/dev/null 2>&1
                         userdel --force "$_user" 2>/dev/null
-                        grep -v ^$_user[[:space:]] /root/usuarios.db >/tmp/ph
-                        cat /tmp/ph >/root/usuarios.db
+                        grep -v ^$_user[[:space:]] /root/user_database.db >/tmp/ph
+                        cat /tmp/ph >/root/user_database.db
                         rm /etc/bot/info-users/$_user
                     done
                 }
@@ -1442,13 +1442,13 @@ del_rev() {
                 sed -i "/\b$_cli_rev\b/d" /etc/bot/revenda/${message_from_username}/${message_from_username}
             }
             [[ -d /etc/bot/suspensos/$_cli_rev ]] && {
-                [[ "$(ls /etc/bot/suspensos/$_cli_rev/usuarios | wc -l)" != '0' ]] && {
-                    for _user in $(ls /etc/bot/suspensos/$_cli_rev/usuarios); do
+                [[ "$(ls /etc/bot/suspensos/$_cli_rev/user_database | wc -l)" != '0' ]] && {
+                    for _user in $(ls /etc/bot/suspensos/$_cli_rev/user_database); do
                         piduser=$(ps -u "$_user" | grep sshd | cut -d? -f1)
                         kill -9 $piduser >/dev/null 2>&1
                         userdel --force "$_user" 2>/dev/null
-                        grep -v ^$_user[[:space:]] /root/usuarios.db >/tmp/ph
-                        cat /tmp/ph >/root/usuarios.db
+                        grep -v ^$_user[[:space:]] /root/user_database.db >/tmp/ph
+                        cat /tmp/ph >/root/user_database.db
                         rm /etc/bot/info-users/$_user
                     done
                 }
@@ -1543,8 +1543,8 @@ dat_rev() {
     _revd=$(grep -w 'Revendedor' $_datfile | cut -d'@' -f2)
     new_d=$(grep -w 'Data' $_datfile | awk '{print $NF}')
     [[ -d "/etc/bot/suspensos/$_revd" ]] && {
-        [[ "$(ls /etc/bot/suspensos/$_revd/usuarios | wc -l)" != '0' ]] && {
-            for _user in $(ls /etc/bot/suspensos/$_revd/usuarios); do
+        [[ "$(ls /etc/bot/suspensos/$_revd/user_database | wc -l)" != '0' ]] && {
+            for _user in $(ls /etc/bot/suspensos/$_revd/user_database); do
                 usermod -U $_user
             done
         }
@@ -1554,8 +1554,8 @@ dat_rev() {
         [[ "$(grep -wc 'SUBREVENDA' /etc/bot/suspensos/$_revd/$_revd)" != '0' ]] && {
             while read _listsub; do
                 _usub="$(echo $_listsub | awk '{print $2}')"
-                [[ "$(ls /etc/bot/suspensos/$_usub/usuarios | wc -l)" != '0' ]] && {
-                    for _user in $(ls /etc/bot/suspensos/$_usub/usuarios); do
+                [[ "$(ls /etc/bot/suspensos/$_usub/user_database | wc -l)" != '0' ]] && {
+                    for _user in $(ls /etc/bot/suspensos/$_usub/user_database); do
                         usermod -U $_user
                     done
                 }
@@ -1667,7 +1667,7 @@ susp_rev() {
         [[ "$(grep -wc 'SUBREVENDA' /etc/bot/revenda/$_revs/$_revs)" != '0' ]] && {
             while read _listsub3; do
                 _usub3="$(echo $_listsub3 | awk '{print $2}')"
-                _dir_users="/etc/bot/revenda/$_usub3/usuarios"
+                _dir_users="/etc/bot/revenda/$_usub3/user_database"
                 [[ "$(ls $_dir_users | wc -l)" != '0' ]] && {
                     for _user in $(ls $_dir_users); do
                         usermod -L $_user
@@ -1678,8 +1678,8 @@ susp_rev() {
                 grep -w "$_usub3" $ativos >>$suspensos
             done <<<"$(grep -w 'SUBREVENDA' /etc/bot/revenda/$_revs/$_revs)"
         }
-        [[ "$(ls /etc/bot/revenda/$_revs/usuarios | wc -l)" != '0' ]] && {
-            for _user_ in $(ls /etc/bot/revenda/$_revs/usuarios); do
+        [[ "$(ls /etc/bot/revenda/$_revs/user_database | wc -l)" != '0' ]] && {
+            for _user_ in $(ls /etc/bot/revenda/$_revs/user_database); do
                 usermod -L $_user_
                 pkill -f $_user_
             done
@@ -1692,8 +1692,8 @@ susp_rev() {
         return 0
     } || {
         [[ "$(grep -wc "$_revs" /etc/bot/revenda/${message_from_username}/${message_from_username})" != '0' ]] && {
-            [[ "$(ls /etc/bot/revenda/$_revs/usuarios | wc -l)" != '0' ]] && {
-                for _user_ in $(ls /etc/bot/revenda/$_revs/usuarios); do
+            [[ "$(ls /etc/bot/revenda/$_revs/user_database | wc -l)" != '0' ]] && {
+                for _user_ in $(ls /etc/bot/revenda/$_revs/user_database); do
                     usermod -L $_user_
                     pkill -f $_user_
                 done

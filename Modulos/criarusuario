@@ -318,7 +318,7 @@ gui=$(date "+%d/%m/%Y" -d "+$dias days")
 pass=$(perl -e 'print crypt($ARGV[0], "password")' $password)
 useradd -e $final -M -s /bin/false -p $pass $username >/dev/null 2>&1 &
 echo "$password" >/etc/VPSManager/senha/$username
-echo "$username $sshlimiter" >>/root/usuarios.db
+echo "$username $sshlimiter" >>/root/user_database.db
 [[ -e /etc/openvpn/server.conf ]] && {
 	echo -ne "\033[1;32mGenerate Ovpn File \033[1;31m? \033[1;33m[s/n]:\033[1;37m "; read resp
 	[[ "$resp" = @(s|S) ]] && {

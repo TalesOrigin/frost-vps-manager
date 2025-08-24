@@ -1610,26 +1610,56 @@ fi
 					fun_conexao
 				}
 				verif_ptrs $porta
+				
 				# Create log directory if it doesn't exist
 				[[ ! -d "/var/log/VPSManager" ]] && mkdir -p /var/log/VPSManager
 				
-
-    if [[ "$PYTHON_CMD" == "none" ]]; then
-        echo ""
-        echo -e "\033[1;31mERROR: Python is not installed!\033[0m"
-        echo -e "\033[1;33mPlease install Python first:\033[0m"
-        echo -e "\033[1;36mFor Ubuntu/Debian: sudo apt-get install python3\033[0m"
-        echo -e "\033[1;36mFor CentOS/RHEL: sudo yum install python3\033[0m"
-        echo "[$(date '+%Y-%m-%d %H:%M:%S')] ERROR: Python not found on system" >> /var/log/VPSManager/wsproxy.log
-        sleep 5
-        fun_conexao
-        return
-    fi
-	echo "[$(date '+%Y-%m-%d %H:%M:%S')] INFO: Using Python command: $PYTHON_CMD" >> /var/log/VPSManager/wsproxy.log
+				PYTHON_CMD=$(check_python)
+				
+				if [[ "$PYTHON_CMD" == "none" ]]; then
+					echo ""
+					echo -e "\033[1;31mERROR: Python is not installed!\033[0m"
+					echo -e "\033[1;33mPlease install Python first:\033[0m"
+					echo -e "\033[1;36mFor Ubuntu/Debian: sudo apt-get install python3\033[0m"
+					echo -e "\033[1;36mFor CentOS/RHEL: sudo yum install python3\033[0m"
+					echo "[$(date '+%Y-%m-%d %H:%M:%S')] ERROR: Python not found on system" >> /var/log/VPSManager/wsproxy.log
+					sleep 5
+					fun_conexao
+					return
+				fi
+				
+				echo "[$(date '+%Y-%m-%d %H:%M:%S')] INFO: Using Python command: $PYTHON_CMD" >> /var/log/VPSManager/wsproxy.log
+				
 				fun_iniwssocks() {
 					sleep 1
-
-					screen -dmS ws py$PYTHON_CMDthon /etc/VPSManager/wsproxy.py $porta
+					# Start websocket proxy with detected Python command
+					screen -dmS ws $PYTHON_CMD /etc/VPSManager/wsproxy.py $porta
+					sleep 2
+					
+					# Check if websocket proxy started successfully
+					if ! screen -list | grep -q "ws"; then
+						echo "[$(date '+%Y-%m-%d %H:%M:%S')] ERROR: Failed to start websocket proxy on port $porta" >> /var/log/VPSManager/wsproxy.log
+						echo "[$(date '+%Y-%m-%d %H:%M:%S')] Python command: $PYTHON_CMD /etc/VPSManager/wsproxy.py $porta" >> /var/log/VPSManager/wsproxy.log
+						
+						# Check if wsproxy.py exists
+						if [[ ! -f "/etc/VPSManager/wsproxy.py" ]]; then
+							echo "[$(date '+%Y-%m-%d %H:%M:%S')] ERROR: wsproxy.py file not found at /etc/VPSManager/wsproxy.py" >> /var/log/VPSManager/wsproxy.log
+						else
+							# Try to capture Python errors
+							$PYTHON_CMD /etc/VPSManager/wsproxy.py $porta 2>> /var/log/VPSManager/wsproxy.log
+						fi
+						return 1
+					else
+						echo "[$(date '+%Y-%m-%d %H:%M:%S')] SUCCESS: Websocket proxy started on port $porta using $PYTHON_CMD" >> /var/log/VPSManager/wsproxy.log
+					fi
+					
+					# Check if port is actually listening
+					sleep 1
+					if ! netstat -tlpn 2>/dev/null | grep -w "$porta" > /dev/null; then
+						echo "[$(date '+%Y-%m-%d %H:%M:%S')] WARNING: Websocket proxy started but port $porta is not listening" >> /var/log/VPSManager/wsproxy.log
+					fi
+					
+					# Update autostart with correct Python command
 					[[ $(grep -wc "wsproxy.py" /etc/autostart) = '0' ]] && {
 						echo -e "netstat -tlpn | grep -w $porta > /dev/null || {  screen -r -S 'ws' -X quit;  screen -dmS ws $PYTHON_CMD /etc/VPSManager/wsproxy.py $porta; }" >>/etc/autostart
 					} || {
@@ -1637,12 +1667,26 @@ fi
 						echo -e "netstat -tlpn | grep -w $porta > /dev/null || {  screen -r -S 'ws' -X quit;  screen -dmS ws $PYTHON_CMD /etc/VPSManager/wsproxy.py $porta; }" >>/etc/autostart
 					}
 				}
+				
 				echo ""
 				echo -e "\033[1;32mSTARTING WEBSOCKET\033[1;33m"
+				echo -e "\033[1;36mUsing: $PYTHON_CMD\033[0m"
 				echo ""
 				fun_bar 'fun_iniwssocks'
-				echo ""
-				echo -e "\033[1;32mSUCCESSFULLY ACTIVATED WEBSOCKET\033[1;33m"
+				
+				# Check if websocket proxy actually started
+				if screen -list | grep -q "ws" && netstat -tlpn 2>/dev/null | grep -w "$porta" > /dev/null; then
+					echo ""
+					echo -e "\033[1;32mSUCCESSFULLY ACTIVATED WEBSOCKET\033[1;33m"
+					echo -e "\033[1;36mLog file: /var/log/VPSManager/wsproxy.log\033[0m"
+				else
+					echo ""
+					echo -e "\033[1;31mFAILED TO START WEBSOCKET PROXY\033[0m"
+					echo -e "\033[1;33mCheck log file: /var/log/VPSManager/wsproxy.log\033[0m"
+					# Show last few lines of log
+					echo -e "\033[1;36mLast error messages:\033[0m"
+					tail -n 10 /var/log/VPSManager/wsproxy.log 2>/dev/null
+				fi
 				sleep 3
 				fun_socks
 			fi

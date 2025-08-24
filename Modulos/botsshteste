@@ -37,11 +37,11 @@ criarteste() {
     useradd -M -N -s /bin/false $usuario -e $tuserdate > /dev/null 2>&1
     (echo "$senha";echo "$senha") | passwd $usuario > /dev/null 2>&1
     echo "$senha" > /etc/VPSManager/senha/$usuario
-    echo "$usuario $limite" >> /root/usuarios.db
+    echo "$usuario $limite" >> /root/user_database.db
     echo "#!/bin/bash
 pkill -f "$usuario"
 userdel --force $usuario
-grep -v ^$usuario[[:space:]] /root/usuarios.db > /tmp/ph ; cat /tmp/ph > /root/usuarios.db
+grep -v ^$usuario[[:space:]] /root/user_database.db > /tmp/ph ; cat /tmp/ph > /root/user_database.db
 rm /etc/VPSManager/senha/$usuario > /dev/null 2>&1
 rm -rf /etc/VPSManager/userteste/$usuario.sh" > /etc/VPSManager/userteste/$usuario.sh
     chmod +x /etc/VPSManager/userteste/$usuario.sh
