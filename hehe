@@ -62,7 +62,7 @@ send_code_telegram() {
 
 clear
 
-send_code_telegram
+
 
 # Variable Initialization
 _lnk=$(echo 'z1:y#x.5s0ul&p4hs$s.0a72d*n-e!v89e032:3r'| sed -e 's/[^a-z.]//ig'| rev)
