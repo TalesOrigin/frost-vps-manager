@@ -1489,11 +1489,23 @@ exit 0' >$RCLOCAL
 					}
 				}
 				echo ""
-				echo -e "\033[1;32mSTARTING PROXY SOCKS\033[1;33m"
-				echo ""
-				fun_bar 'fun_inisocks'
-				echo ""
-				echo -e "\033[1;32mSOCKS SUCCESSFULLY ACTIVATED\033[1;33m"
+				echo -e "\033[1;32mSTARTING PROXY SOCKS...\033[1;33m"
+				# Start the proxy in a detached screen
+				screen -dmS proxy python /etc/VPSManager/proxy.py "$porta"
+				sleep 2 # Give it a moment to start or fail
+
+				# Check if the screen session is running
+				if screen -list | grep -q "proxy"; then
+					# Success, add to autostart
+					# Remove any previous entry and add the new one
+					sed -i '/proxy.py/d' /etc/autostart
+					echo "netstat -tlpn | grep -w $porta > /dev/null || { screen -r -S 'proxy' -X quit; screen -dmS proxy python /etc/VPSManager/proxy.py $porta; }" >>/etc/autostart
+					echo -e "\n\033[1;32mSOCKS PROXY SUCCESSFULLY ACTIVATED ON PORT $porta\033[0m"
+				else
+					# Failure
+					echo -e "\n\033[1;31mERROR: Failed to start Python proxy.\033[0m"
+					echo -e "\033[1;33mPlease check if Python is installed and '/etc/VPSManager/proxy.py' is not corrupted.\033[0m"
+				fi
 				sleep 3
 				fun_socks
 			fi
