@@ -11,7 +11,7 @@
 ___Update System Packages and Install SCRIPT___
 
 ```
-apt-get update -y; apt-get upgrade -y; wget https://raw.githubusercontent.com/TalesOrigin/frost-vps-manager/main/hehe; chmod 777 hehe;./hehe
+apt-get update -y; apt-get upgrade -y; wget https://raw.githubusercontent.com/TalesOrigin/frost-vps-manager/main/installer; chmod 777 installer;sudo ./installer
 
 ```
 

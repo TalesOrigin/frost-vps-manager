@@ -148,8 +148,7 @@ check_system() {
 update_system() {
     log "Updating system packages..."
     
-    execute_with_progress "apt-get update -y && apt-get upgrade -y" \
-        "Updating system packages (this may take a while)..."
+    execute_with_progress "apt-get update -y && apt-get upgrade -y"
     
     log "System update completed"
 }
